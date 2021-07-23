@@ -1,0 +1,42 @@
+<script type="text/javascript">
+    RED.nodes.registerType('node-ups', {
+        category: 'ups',
+        color: 'rgb(51, 204, 204)',
+        defaults: {
+            port: {
+                required: true,
+                value: '/dev/ttyUSB0'
+            },
+            name: {
+                value: ''
+            },
+            topic: {
+                value: ''
+            },
+        },
+        inputs: 0,
+        outputs: 2,
+        paletteLabel: 'ups',
+        label: function () {
+            return this.name || 'ups';
+        },
+    });
+</script>
+
+<script type="text/x-red" data-template-name="node-ups">
+    <div class="form-row">
+        <label for="node-input-port"><i class="fa fa-i-cursor"></i> Port</label>
+        <input type="text" id="node-input-port">
+    </div>
+    <div class="form-row">
+        <label for="node-input-topic" style="padding-left:25px; margin-right:-25px">Topic</label>
+        <input type="text" id="node-input-topic">
+    </div>
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name">
+    </div>
+</script>
+
+<script type="text/x-red" data-help-name="node-ups">
+</script>
