@@ -1,6 +1,6 @@
 import SerialPort from 'serialport';
-import { firstValueFrom, Observable, Subject } from 'rxjs';
-import { filter, first, map, scan, tap, timeout } from 'rxjs/operators';
+import { merge, Observable, Subject } from 'rxjs';
+import { first, map, scan, switchMap, tap, timeout } from 'rxjs/operators';
 import * as cnst from './Ep2000ProConst';
 
 export class Ep2000ProProvider {
@@ -23,85 +23,88 @@ export class Ep2000ProProvider {
                     observer.error(err);
                 }
             });
-            provider.port.once('open', function () {
-                observer.next(provider);
-            });
+            provider.port.once('open', () => observer.next(provider));
+            provider.port.once('error', err => observer.error(err));
             return () => provider.port.close();
         });
     }
 
-    async read() {
-        const status = await this.getData(cnst.REAT_STATUS, cnst.EXPECTED_REPLY_STATUS);
-        const writable = await this.getData(cnst.READ_DATA_2, cnst.EXPECTED_REPLY_COUNT_2);
-
-        return {
-            machineType: status.readInt16BE(0),
-            softwareVersion: status.readInt16BE(2),
-            workState: cnst.WORK_STATE[status.readInt16BE(4)],
-            batClass: status.readInt16BE(6),
-            ratedPower: status.readInt16BE(8),
-            grid: {
-                voltage: status.readInt16BE(10) * 0.1,
-                frequency: status.readInt16BE(12) * 0.1,
-                frequencyType: cnst.FREQUENCY_TYPE[writable.readInt16BE(0)],
-                voltageType: cnst.VOLTAGE_TYPE[writable.readInt16BE(2)],
-            },
-            output: {
-                voltage: status.readInt16BE(14) * 0.1,
-                frequency: status.readInt16BE(16) * 0.1,
-            },
-            load: {
-                current: status.readInt16BE(18) * 0.1,
-                power: status.readInt16BE(20),
-                percent: status.readInt16BE(24),
-                state: cnst.LOAD_STATE[status.readInt16BE(26)],
-            },
-            battery: {
-                voltage: status.readInt16BE(28) * 0.1,
-                current: status.readInt16BE(30) * 0.1,
-                soc: status.readInt16BE(34),
-            },
-            transformerTemp: status.readInt16BE(36),
-            avrState: cnst.AVR_STATE[status.readInt16BE(38)],
-            buzzerState: cnst.BUZZER_STATE[status.readInt16BE(40)],
-            fault: cnst.FAULTS.get(status.readInt16BE(42)),
-            alarm: status.readInt16BE(44),
-            charge: {
-                state: cnst.CHARGE_STATE[status.readInt16BE(46)],
-                flag: cnst.CHARGE_FLAG[status.readInt16BE(48)],
-            },
-            mainSw: cnst.MAIN_SW[status.readInt16BE(50)],
-            delayType: cnst.DELAY_TYPE[status.readInt16BE(52)],
-            bulkChargeCurrent: writable.readInt16BE(10),
-            batteryLowVoltage: writable.readInt16BE(4) * 0.1,
-            constantChargeVoltage: writable.readInt16BE(6) * 0.1,
-            floatChargeVoltage: writable.readInt16BE(8) * 0.1,
-            buzzerSilence: cnst.BUZZER_SILENCE[writable.readInt16BE(12)],
-            enableGridCharge: writable.readInt16BE(14) === 0 ? 'Enable' : 'Disable',
-            enableKeySound: writable.readInt16BE(16) === 0 ? 'Enable' : 'Disable',
-        };
+    read() {
+        return this.getData(cnst.REAT_STATUS, cnst.EXPECTED_REPLY_STATUS).pipe(
+            switchMap(status =>
+                this.getData(cnst.READ_DATA_2, cnst.EXPECTED_REPLY_COUNT_2)
+                    .pipe(map(writable => ({ status, writable }))),
+            ),
+            map(({ status, writable }) => ({
+                machineType: status.readInt16BE(0),
+                softwareVersion: status.readInt16BE(2),
+                workState: cnst.WORK_STATE[status.readInt16BE(4)],
+                batClass: status.readInt16BE(6),
+                ratedPower: status.readInt16BE(8),
+                grid: {
+                    voltage: status.readInt16BE(10) * 0.1,
+                    frequency: status.readInt16BE(12) * 0.1,
+                    frequencyType: cnst.FREQUENCY_TYPE[writable.readInt16BE(0)],
+                    voltageType: cnst.VOLTAGE_TYPE[writable.readInt16BE(2)],
+                },
+                output: {
+                    voltage: status.readInt16BE(14) * 0.1,
+                    frequency: status.readInt16BE(16) * 0.1,
+                },
+                load: {
+                    current: status.readInt16BE(18) * 0.1,
+                    power: status.readInt16BE(20),
+                    percent: status.readInt16BE(24),
+                    state: cnst.LOAD_STATE[status.readInt16BE(26)],
+                },
+                battery: {
+                    voltage: status.readInt16BE(28) * 0.1,
+                    current: status.readInt16BE(30) * 0.1,
+                    soc: status.readInt16BE(34),
+                },
+                transformerTemp: status.readInt16BE(36),
+                avrState: cnst.AVR_STATE[status.readInt16BE(38)],
+                buzzerState: cnst.BUZZER_STATE[status.readInt16BE(40)],
+                fault: cnst.FAULTS.get(status.readInt16BE(42)),
+                alarm: status.readInt16BE(44),
+                charge: {
+                    state: cnst.CHARGE_STATE[status.readInt16BE(46)],
+                    flag: cnst.CHARGE_FLAG[status.readInt16BE(48)],
+                },
+                mainSw: cnst.MAIN_SW[status.readInt16BE(50)],
+                delayType: cnst.DELAY_TYPE[status.readInt16BE(52)],
+                bulkChargeCurrent: writable.readInt16BE(10),
+                batteryLowVoltage: writable.readInt16BE(4) * 0.1,
+                constantChargeVoltage: writable.readInt16BE(6) * 0.1,
+                floatChargeVoltage: writable.readInt16BE(8) * 0.1,
+                buzzerSilence: cnst.BUZZER_SILENCE[writable.readInt16BE(12)],
+                enableGridCharge: writable.readInt16BE(14) === 0 ? 'Enable' : 'Disable',
+                enableKeySound: writable.readInt16BE(16) === 0 ? 'Enable' : 'Disable',
+            }))
+        );
     }
 
-    private async getData(command: Buffer, expectedReplyCount: number) {
-        const readDataPromise = this.readDataAsync(expectedReplyCount);
-        await this.writeAsync(command);
-        return await readDataPromise;
+    private getData(command: Buffer, expectedReplyCount: number): Observable<Buffer> {
+        return merge(
+            this.readData(expectedReplyCount),
+            this.sendCommand(command)
+        );
     }
 
-    private writeAsync(data: Buffer) {
-        return new Promise<void>((resolve, reject) => {
+    private sendCommand(data: Buffer): Observable<never> {
+        return new Observable(observer => {
             this.port.write(data, err => {
                 if (err) {
-                    reject(err);
+                    observer.error(err);
                 } else {
-                    resolve();
+                    observer.complete();
                 }
             });
         });
     }
 
-    private async readDataAsync(dataLength: number, timeoutMiliseconds = 600) {
-        const data$ = this.data.pipe(
+    private readData(dataLength: number, timeoutMiliseconds = 600) {
+        return this.data.pipe(
             scan((ctx, data) => {
                 ctx.offset += data.copy(ctx.buffer, ctx.offset);
                 return ctx;
@@ -119,7 +122,6 @@ export class Ep2000ProProvider {
             map(data => data.slice(3, data.length - 2)),
             timeout(timeoutMiliseconds),
         );
-        return firstValueFrom(data$);
     }
 
     private errorCheck(data: Buffer) {

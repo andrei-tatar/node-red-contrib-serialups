@@ -22,10 +22,7 @@ module.exports = function (RED: any) {
             })),
             switchMap(provider =>
                 timer(0, POLL_INTERVAL_MSEC).pipe(
-                    switchMap(async index => {
-                        const data = await provider.read();
-                        return { index, data };
-                    }),
+                    switchMap(index => provider.read().pipe(map(data => ({ index, data })))),
                 ),
             ),
             tap(({ data, index }) => {
