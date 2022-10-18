@@ -1,4 +1,4 @@
-import SerialPort from 'serialport';
+import { SerialPort } from 'serialport';
 import { merge, Observable, Subject } from 'rxjs';
 import { first, map, scan, switchMap, tap, timeout } from 'rxjs/operators';
 import * as cnst from './Ep2000ProConst';
@@ -8,7 +8,8 @@ export class Ep2000ProProvider {
     private data = new Subject<Buffer>();
 
     private constructor(private readonly portName: string) {
-        this.port = new SerialPort(this.portName, {
+        this.port = new SerialPort({
+            path: this.portName,
             baudRate: 9600,
             autoOpen: false,
         });
