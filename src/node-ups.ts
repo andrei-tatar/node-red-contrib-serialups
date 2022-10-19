@@ -1,5 +1,5 @@
 import { defer, timer } from "rxjs";
-import { tap, switchMap, retryWhen, delayWhen, map, distinctUntilChanged, finalize } from 'rxjs/operators';
+import { tap, switchMap, map, distinctUntilChanged, retry } from 'rxjs/operators';
 import { Ep2000ProProvider } from "./providers/Ep2000ProProvider";
 
 const PERIODIC_UPDATE_SEC = 10;
@@ -35,15 +35,17 @@ module.exports = function (RED: any) {
             tap(state => {
                 this.send([null, { payload: state, topic: config.topic }]);
             }),
-            retryWhen(err$ => err$.pipe(delayWhen(err => {
-                this.error(err);
-                this.status({
-                    fill: 'red',
-                    shape: 'ring',
-                    text: 'error, retrying in 10 sec'
-                });
-                return timer(10000);
-            }))),
+            retry({
+                delay: (err) => {
+                    this.error(err);
+                    this.status({
+                        fill: 'red',
+                        shape: 'ring',
+                        text: 'error, retrying in 10 sec'
+                    });
+                    return timer(10000);
+                },
+            }),
         ).subscribe();
 
         this.on('close', () => {

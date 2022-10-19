@@ -81,7 +81,8 @@ export class Ep2000ProProvider {
                 buzzerSilence: cnst.BUZZER_SILENCE[writable.readInt16BE(12)],
                 enableGridCharge: writable.readInt16BE(14) === 0 ? 'Enable' : 'Disable',
                 enableKeySound: writable.readInt16BE(16) === 0 ? 'Enable' : 'Disable',
-            }))
+            })),
+            timeout(5000),
         );
     }
 
