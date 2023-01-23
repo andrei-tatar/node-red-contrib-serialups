@@ -1,5 +1,5 @@
 {
-  "name": "node-red-contrib-serialups",
+  "name": "@andrei-tatar/node-red-contrib-serialups",
   "version": "1.0.0",
   "description": "Provides ability to talk to UPS over serial port",
   "main": "index.js",
